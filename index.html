@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Fast Seek Video</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      body {
+        background-color: #1e1e1e;
+        overflow: auto;
+      }
+
+      #root {
+        height: calc(100vh * 3);
+      }
+
+      #app {
+        width: 100%;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+      }
+
+      video {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="app">
+        <video src="homeNew-desktop.mp4" playsinline muted />
+      </div>
+    </div>
+
+    <script>
+      /**
+        Low FPS + low keyframe interval + h.264 encoding = fask seeking:
+        
+        ffmpeg -i in.mp4 -vcodec libx264 -x264-params keyint=12:scenecut=0 \
+          -filter:v fps=12 -an out.mp4
+      */
+
+      const scroller = document.body;
+      const video = document.querySelector("video");
+      let seeked = false;
+
+      let lastProgress = 0;
+      const progressDelta = 0.25;
+
+      function lerp(x, y, t) {
+        return (1 - t) * x + t * y;
+      }
+
+      function tick() {
+        requestAnimationFrame(tick);
+        if (!seeked) return;
+        seeked = false;
+        console.log(seeked);
+        const { scrollHeight, clientHeight, scrollTop } = scroller;
+        const maxScroll = scrollHeight - clientHeight;
+        const scrollProgress = scrollTop / Math.max(maxScroll, 1);
+        // Round to 2 decimal places
+        const progress =
+          Math.round(
+            // Smoothly approach scroll progress instead of instantly
+            lerp(lastProgress, scrollProgress, progressDelta) * 100
+          ) / 100;
+        video.currentTime = video.duration * progress;
+        lastProgress = progress;
+      };
+
+      tick();
+
+      video.addEventListener("seeked", () => {
+        seeked = true;
+      });
+      video.currentTime = 0.01;
+    </script>
+  </body>
+</html>
